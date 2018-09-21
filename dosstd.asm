@@ -24,42 +24,43 @@ terminate:
     
 ; Alloc memory from DOS
 ; arg1: Total of bytes
-; arg2: Pointer to the integer which will contains the address
+; returns: AX contains the address. 0 if allocation fail
 allocmem: 
     push bp
     mov bp, sp
     
     ; Load total of bytes going to be alloc
-    mov bx, [bp + 4]
+    mov ax, [bp + 4]
+    
+    xor dx, dx
+    mov cx, 16    ; Group of 16 bytes
+    
+    div cx
+    
+    cmp dx, 0
+    jz allocint
+    
+roundsize:
+    add ax, 1
+    
+allocint:
+    mov bx, ax
     mov ah, 48h
     
     int 21h
     
-    push bx
-    
-    jc allocfail
- 
-allocsuccess:
-    ; Load the allocated address to the given pointer
-    mov di, [bp + 6]
-    mov word [di], ax
-
-    jmp finishalloc
+    jnc finishalloc
     
 allocfail:
-    ; Just set the given pointer address to 0
-    mov di, [bp + 6]
-    mov word [di], 0
+    mov ax, 0
     
 finishalloc:
-    pop bx
     pop bp
     ret
  
 ; Free an allocated memory segment
 ; arg1: address
-; arg2: Pointer to 16-bit integer will contain the error code. 
-;       The integer will be 0 if there is no error.
+; returns: ax contains the error code
 freemem:
     push bp
     mov bp, sp
@@ -71,20 +72,12 @@ freemem:
     
     push bx
     
-    jc freefail
+    jc finishfree
     
 freesucc:
-    mov di, [bp + 6]
-    mov word [di], 0
-    
-    jmp finishfree
-    
-freefail:
-    mov di, [bp + 6]
-    mov word [di], ax
+    mov ax, 0
     
 finishfree:
     pop bx
-    
     pop bp
     ret
